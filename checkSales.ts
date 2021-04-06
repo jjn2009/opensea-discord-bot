@@ -25,46 +25,51 @@ const buildMessage = (sale: any) => (
 	.setColor('#0099ff')
 	.setTitle(sale.asset.name + ' sold!')
 	.setURL(sale.asset.permalink)
-	.setAuthor('OpenSea Bot', 'https://files.readme.io/566c72b-opensea-logomark-full-colored.png', 'https://github.com/sbauch/opensea-discord-bot')
+	//.setAuthor('', 'https://files.readme.io/566c72b-opensea-logomark-full-colored.png', 'https://github.com/sbauch/opensea-discord-bot')
 	.setThumbnail(sale.asset.collection.image_url)
 	.addFields(
 		{ name: 'Name', value: sale.asset.name },
 		{ name: 'Amount', value: `${ethers.utils.formatEther(sale.total_price)}${ethers.constants.EtherSymbol}`},
-		{ name: 'Buyer', value: sale?.transaction?.to_account?.address, },
-		{ name: 'Seller', value: sale?.transaction?.from_account?.address,  },
+		{ name: 'Buyer', value: sale?.winner_account?.address, },
+		{ name: 'Seller', value: sale?.seller?.address,  },
 	)
   .setImage(sale.asset.image_url)
-	.setTimestamp(sale.created_date) // unclear why this seems broken
+	.setTimestamp(Date.parse(`${sale?.created_date}Z`))
 	.setFooter('Sold on OpenSea', 'https://files.readme.io/566c72b-opensea-logomark-full-colored.png')
 )
 
-async function main() {
+export async function main() {
   const channel = await discordSetup();
-  const seconds = process.env.SECONDS ? paresInt(process.env.SECONDS) : 3_600;
+  const seconds = process.env.SECONDS ? parseInt(process.env.SECONDS) : 3_600;
   const hoursAgo = (Math.round(new Date().getTime() / 1000) - (seconds)); // in the last hour, run hourly?
-  
+
   const openSeaResponse = await fetch(
     "https://api.opensea.io/api/v1/events?" + new URLSearchParams({
       offset: '0',
       limit: '100',
       event_type: 'successful',
-      only_opensea: 'true',
+      only_opensea: 'false',
       occurred_after: hoursAgo.toString(), 
       collection_slug: process.env.COLLECTION_SLUG!,
       contract_address: process.env.CONTRACT_ADDRESS!
   })).then((resp) => resp.json());
 
   await Promise.all(
-    openSeaResponse?.asset_events?.map(async (sale: any) => {
+    openSeaResponse?.asset_events?.reverse().map(async (sale: any) => {
       const message = buildMessage(sale);
       return channel.send(message)
     })
   );   
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch(error => {
-    console.error(error);
-    process.exit(1);
-  });
+if (require.main === module) {
+  main()
+    .then((res) =>{ 
+      console.warn(res)
+      process.exit(0)
+    })
+    .catch(error => {
+      console.error(error);
+      process.exit(1);
+    });
+}
