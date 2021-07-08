@@ -20,8 +20,8 @@ const  discordSetup = async (): Promise<TextChannel> => {
   })
 }
 
-const buildMessage = (sale: any) => (
-  new Discord.MessageEmbed()
+const buildMessage = (sale: any) => {
+  return new Discord.MessageEmbed()
 	.setColor('#0099ff')
 	.setTitle(sale.asset.name + ' sold!')
 	.setURL(sale.asset.permalink)
@@ -36,7 +36,7 @@ const buildMessage = (sale: any) => (
   .setImage(sale.asset.image_url)
 	.setTimestamp(Date.parse(`${sale?.created_date}Z`))
 	.setFooter('Sold on OpenSea', 'https://files.readme.io/566c72b-opensea-logomark-full-colored.png')
-)
+}
 
 export async function main() {
   const channel = await discordSetup();
@@ -56,6 +56,7 @@ export async function main() {
 
   await Promise.all(
     openSeaResponse?.asset_events?.reverse().map(async (sale: any) => {
+      if (!sale.asset || !sale.asset.name) return;
       const message = buildMessage(sale);
       return channel.send(message)
     })
